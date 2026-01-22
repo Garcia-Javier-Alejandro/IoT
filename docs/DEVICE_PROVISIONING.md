@@ -88,7 +88,30 @@ BLE (Bluetooth Low Energy) allows you to provision WiFi credentials without swit
 | Password | `cba1d466-344c-4be3-ab3f-189f80dd7518` | Write | Send network password |
 | Networks | `fa87c0d0-afac-11de-8a39-0800200c9a66` | Read | Receive available networks (JSON) |
 | Status | `8d8218b6-97bc-4527-a8db-13094ac06b1d` | Read/Notify | Get provisioning status |
-| Command | `0b9f1e80-0f88-4b68-9a09-9d1d6921d0d8` | Write | Send special commands |
+| Command | `8b9d68c4-57b8-4b02-bf19-6fd94b62f709` | Write | Send special commands (e.g., `clear_wifi`) |
+
+### BLE Status Values
+
+The ESP32 publishes its provisioning state via the Status characteristic:
+
+| Status | Meaning | Action |
+|--------|---------|--------|
+| `waiting` | Device idle, BLE advertising | None - device ready |
+| `connected` | BLE client connected | Status characteristic subscribed |
+| `ssid_received` | SSID written successfully | Waiting for password |
+| `password_received` | Password written successfully | Attempting WiFi connection |
+| `credentials_ready` | Both credentials received, connecting to WiFi | Monitor for `connected` or error |
+| `clear_wifi_requested` | Clear WiFi command received | Device will restart |
+
+### BLE Retry Mechanism (v2.0+)
+
+The provisioning flow includes automatic retry with exponential backoff:
+
+- **Retry Attempts:** 3 attempts for sending credentials
+- **Backoff Strategy:** 500ms → 1000ms → 2000ms between attempts
+- **Why Needed:** BLE/WiFi coexistence on ESP32 can cause transient failures during mode transitions
+
+This automatic retry prevents provisioning failures from temporary radio contention.
 
 ### BLE Troubleshooting
 
@@ -435,7 +458,55 @@ This erases **all** ESP32 memory including WiFi and MQTT credentials.
 
 ---
 
-## 🆘 Support & Troubleshooting
+## �️ Implementation Notes (For Developers)
+
+### BLE/WiFi Coexistence Handling
+
+The ESP32's WiFi and BLE stacks share the same radio. The provisioning flow has been optimized to handle this:
+
+#### WiFi Scanning
+
+When scanning for available networks after BLE connection:
+
+1. **Hard Reset of WiFi Driver** - Ensures clean state after previous WiFi operations
+   - `WiFi.mode(WIFI_OFF)` - Complete WiFi stack teardown
+   - 100ms delay - Allows radio to fully power down
+   - `WiFi.mode(WIFI_STA)` - Re-initialize station mode
+   - 200ms delay - Critical for radio to stabilize when BLE is active
+
+2. **Network List Truncation** - Respects BLE MTU limitations
+   - Maximum response size: ~400 bytes
+   - Scan stops when this limit reached
+   - Ensures reliable transmission over BLE (MTU typically 23-512 bytes depending on device)
+
+3. **Proper Logging** - Aids in diagnosing coexistence issues
+   - WiFi status codes logged if scan fails
+   - JSON response size logged for debugging MTU issues
+   - Helpful for field troubleshooting
+
+#### Credential Transmission
+
+Credentials are sent with automatic retry and backoff:
+
+- **Write sequence:** SSID first, then password (100ms apart)
+- **Retry logic:** Up to 3 attempts with exponential backoff (500ms, 1s, 2s)
+- **Why:** Transient BLE write failures during WiFi mode transitions
+
+### Historical Issues Fixed (v1.0 → v2.0)
+
+The following issues were identified and resolved in the provisioning flow:
+
+1. **UUID Mismatch** - Dashboard was writing to wrong characteristic UUID
+2. **Blocking Callbacks** - WiFi scan inside BLE callback could cause disconnects
+3. **Insufficient Delay** - WiFi radio needed more time after BLE is active
+4. **Missing Retry Logic** - First attempt failures were not retried
+5. **Network List Overflow** - Large networks list could exceed BLE MTU
+
+All of these have been addressed in the current implementation.
+
+---
+
+## �🆘 Support & Troubleshooting
 
 ### General Checklist
 
