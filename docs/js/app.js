@@ -608,7 +608,7 @@ const AppModule = (() => {
       elements.pumpToggleDot.style.top = '4px';
       elements.pumpToggleDot.style.bottom = 'auto';
 
-      if (state === "ON") {
+      if (state === "OFF") {
         // Blue background, dot aligned right, icon at full opacity
         elements.btnPump.classList.remove('bg-slate-300');
         elements.btnPump.classList.add('bg-primary');
@@ -617,7 +617,7 @@ const AppModule = (() => {
         if (elements.pumpIcon) {
           elements.pumpIcon.style.opacity = '1';
         }
-      } else if (state === "OFF") {
+      } else if (state === "ON") {
         // Grey background, dot aligned left, icon greyed out
         elements.btnPump.classList.remove('bg-primary');
         elements.btnPump.classList.add('bg-slate-300');

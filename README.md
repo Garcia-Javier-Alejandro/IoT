@@ -52,6 +52,8 @@ URL: `https://your-domain.pages.dev` → Login → Connect to MQTT broker
 
 That's it! You now have a pool controller. 🎉
 
+**Note on Pump Display Logic:** Due to the relay wiring configuration, the dashboard displays inverted pump states - it shows "ON" when the firmware sends "OFF" and vice versa. This is intentional and matches the physical relay behavior. See [Wiring Diagram](docs/WIRING_DIAGRAM.md#pump-control---inverted-display-logic) for details.
+
 ---
 
 ## Features at a Glance

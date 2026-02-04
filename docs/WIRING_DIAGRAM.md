@@ -58,6 +58,17 @@ Relay 2 (IN2 - Pump):
 
 **Note:** The firmware uses `digitalWrite(pin, HIGH)` to activate relays, so use an **Active HIGH** module or invert the logic in code.
 
+### Pump Control - Inverted Display Logic
+
+⚠️ **Important:** The pump relay physical wiring requires **inverted logic** between firmware and dashboard display:
+
+- **Firmware logic (correct):** Sends `"ON"` when relay should be activated, `"OFF"` when relay should be deactivated
+- **Dashboard display (inverted):** Shows pump as **ON** when firmware sends `"OFF"`, and shows **OFF** when firmware sends `"ON"`
+
+This inversion is implemented in the frontend code (`docs/js/app.js` in the `setPumpState()` function) to match the physical wiring requirements of the relay module and pump motor configuration.
+
+**Why:** The relay wiring is configured so that when the relay is physically OFF, the pump should be considered ON from a user perspective, and vice versa.
+
 ---
 
 ## Valve Wiring (2 Electrovalves in Parallel)
