@@ -45,6 +45,13 @@ cp include/"secrets (example).h" include/secrets.h
 platformio run --target upload
 ```
 
+WiFi boot priority (v3.1+):
+1. Try WiFi credentials saved in NVS (from previous BLE/WiFiManager provisioning)
+2. If NVS credentials fail, try fallback networks from `include/secrets.h` in order: `WIFI_SSID`, `WIFI_SSID_2`, `WIFI_SSID_3`
+3. If all fail, start BLE provisioning
+
+When a fallback network connects successfully, it is saved to NVS automatically for faster next boot.
+
 ### 3. Dashboard (1 minute)
 Dashboard auto-deploys to Cloudflare Pages. Or deploy yourself to any static host.
 

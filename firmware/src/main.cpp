@@ -646,6 +646,35 @@ bool connectWiFi(const char* ssid, const char* password, int retryAttempts = WIF
 }
 
 /**
+ * Try fallback WiFi credentials compiled in secrets.h
+ * Saves working credentials to NVS so next boot can auto-connect quickly.
+ */
+bool connectUsingConfiguredFallbacks() {
+  const char* ssids[] = {WIFI_SSID, WIFI_SSID_2, WIFI_SSID_3};
+  const char* passwords[] = {WIFI_PASS, WIFI_PASS_2, WIFI_PASS_3};
+
+  for (int i = 0; i < 3; i++) {
+    if (ssids[i] == nullptr || ssids[i][0] == '\0') {
+      continue;
+    }
+
+    Serial.print("[WiFi] Trying configured network #");
+    Serial.print(i + 1);
+    Serial.print(": ");
+    Serial.println(ssids[i]);
+
+    if (connectWiFi(ssids[i], passwords[i], WIFI_RETRY_ATTEMPTS)) {
+      saveWiFiCredentials(ssids[i], passwords[i]);
+      Serial.println("[WiFi] ✓ Connected using configured fallback credentials");
+      return true;
+    }
+  }
+
+  Serial.println("[WiFi] No configured fallback network connected");
+  return false;
+}
+
+/**
  * Callback for when WiFiManager connects successfully
  */
 void onWiFiConnect() {
@@ -706,8 +735,14 @@ bool initWiFiProvisioning() {
     Serial.println("[WiFi] Connection failed after retries - network may be down");
     Serial.println("[WiFi] Keeping credentials for auto-retry. Use BLE/MQTT to update if needed.");
   }
+
+  // Step 3: Try compile-time fallback credentials from secrets.h
+  Serial.println("[WiFi] Trying configured fallback networks from secrets.h...");
+  if (connectUsingConfiguredFallbacks()) {
+    return true;
+  }
   
-  // Step 3: No credentials or connection failed - start BLE provisioning
+  // Step 4: No credentials or connection failed - start BLE provisioning
   Serial.println("[WiFi] Starting BLE provisioning (credentials preserved for retry)...");
   initBLEProvisioning();
   

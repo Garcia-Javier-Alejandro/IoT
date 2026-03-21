@@ -4,6 +4,19 @@ This guide covers WiFi provisioning for the ESP32 Pool Controller using two meth
 - **BLE Provisioning** (Android, Windows, macOS)
 - **WiFiManager Captive Portal** (iOS, or any device)
 
+## Connection Priority at Boot
+
+On every boot, firmware uses this order:
+1. Load WiFi credentials from NVS (saved from a previous successful provisioning)
+2. If NVS credentials fail, try fallback credentials from `firmware/include/secrets.h` in this order:
+   - `WIFI_SSID` / `WIFI_PASS`
+   - `WIFI_SSID_2` / `WIFI_PASS_2`
+   - `WIFI_SSID_3` / `WIFI_PASS_3`
+3. If all attempts fail, start BLE provisioning
+
+If a fallback network connects, those credentials are saved to NVS automatically.
+This means next boot will usually connect immediately without re-running provisioning.
+
 ## Quick Reference
 
 | Device Type | Method | Browser | Setup Time |
