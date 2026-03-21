@@ -9,9 +9,9 @@
 // ==================== GPIO Pins ====================
 
 // --- Outputs: Relay Control ---
-// Note: 10kΩ pull-down resistors installed on GPIO 25 and 26 to prevent relay activation during boot
-#define VALVE_RELAY_PIN     25  // Relay IN1: Standard relay controlling 24V electrovalves (NC+NO in parallel) - GPIO 25 side
-#define PUMP_RELAY_PIN      26  // Relay IN2: Standard relay controlling 220V AC pump - GPIO 25/26 side
+// Note: 10kΩ pull-down resistors installed on GPIO 27 and 26 to prevent relay activation during boot
+#define VALVE_RELAY_PIN     27  // Relay IN1: Standard relay controlling 24V electrovalves (NC+NO in parallel) - GPIO 27 side
+#define PUMP_RELAY_PIN      26  // Relay IN2: Standard relay controlling 220V AC pump - GPIO 26 side
 
 // --- Inputs: Sensors ---
 #define TEMP_SENSOR_PIN     4   // DS18B20 temperature probe (OneWire) - 4.7kΩ pull-up to 3.3V (changed from GPIO 21 - was damaged during soldering)
