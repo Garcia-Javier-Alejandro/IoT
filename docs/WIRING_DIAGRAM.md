@@ -1,6 +1,6 @@
 # Pool Control System - Wiring Diagram v3.0
 
-> 📋 **Note:** For a complete visual schematic, see [wiring_diagram.png](wiring_diagram.png)
+> 📋 **Note:** For a complete visual schematic, see [WIRING_DIAGRAM.png](WIRING_DIAGRAM.png)
 
 ## Hardware Components
 - ESP32 DevKit V1
