@@ -46,7 +46,7 @@ platformio run --target upload
 ```
 
 WiFi boot priority (v3.1+):
-1. Try WiFi credentials saved in NVS (from previous BLE/WiFiManager provisioning)
+1. Try WiFi credentials saved in NVS (from previous BLE provisioning)
 2. If NVS credentials fail, try fallback networks from `include/secrets.h` in order: `WIFI_SSID`, `WIFI_SSID_2`, `WIFI_SSID_3`
 3. If all fail, start BLE provisioning
 
@@ -71,7 +71,7 @@ That's it! You now have a pool controller. 🎉
 | Temperature Sensor | ✅ Active | OneWire DS18B20, 60-second updates |
 | Countdown Timer | ✅ Active | Set duration & auto-shutoff |
 | Weekly Scheduling | ✅ Active | Up to 3 programs, daily execution |
-| WiFi Provisioning | ✅ Active | BLE (Android/macOS) or Captive Portal (iOS) |
+| WiFi Provisioning | ✅ Active | BLE via Web Bluetooth |
 | Manual Override | ✅ Active | Physical switches work independently |
 | Event Logging | ✅ Active | Real-time log with timestamps |
 | MQTT over TLS | ✅ Active | Secure end-to-end encryption |
@@ -100,7 +100,7 @@ That's it! You now have a pool controller. 🎉
 ## Documentation
 
 - **[Setup & Installation](docs/SETUP.md)** - Step-by-step hardware & software setup
-- **[Device Provisioning](docs/DEVICE_PROVISIONING.md)** - WiFi setup (BLE or Captive Portal)
+- **[Device Provisioning](docs/DEVICE_PROVISIONING.md)** - WiFi setup over BLE
 - **[Wiring Diagram](docs/WIRING_DIAGRAM.md)** - Complete hardware guide with pinouts
 - **[Architecture & Design](docs/ARCHITECTURE.md)** - System design, data flow, security model
 - **[API Reference](docs/API_REFERENCE.md)** - MQTT topics, control commands

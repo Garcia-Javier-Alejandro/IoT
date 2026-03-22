@@ -630,7 +630,7 @@ This is the main entry point that orchestrates the entire provisioning flow:
 
 ```cpp
 /**
- * Initialize WiFi with BLE Provisioning (primary) + WiFiManager fallback
+ * Initialize WiFi with BLE provisioning
  * 
  * Provisioning flow:
  * 1. Try to load WiFi credentials from NVS

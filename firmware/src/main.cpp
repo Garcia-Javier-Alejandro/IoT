@@ -2,7 +2,6 @@
 
 #include <WiFi.h>              // ESP32 WiFi
 #include <WiFiClientSecure.h>  // TLS Client (HTTPS/MQTTS)
-#include <WiFiManager.h>       // WiFiManager for captive portal provisioning (fallback)
 #include <PubSubClient.h>      // MQTT client (uses a Client underneath)
 #include <time.h>              // For NTP (system time)
 #include <OneWire.h>           // OneWire protocol for DS18B20
@@ -675,39 +674,14 @@ bool connectUsingConfiguredFallbacks() {
 }
 
 /**
- * Callback for when WiFiManager connects successfully
- */
-void onWiFiConnect() {
-  Serial.println("[WiFi] ✓ CONNECTED via WiFiManager");
-  Serial.print("[WiFi] SSID: ");
-  Serial.println(WiFi.SSID());
-  Serial.print("[WiFi] IP: ");
-  Serial.println(WiFi.localIP());
-  Serial.print("[WiFi] RSSI: ");
-  Serial.print(WiFi.RSSI());
-  Serial.println(" dBm");
-  wifiProvisioned = true;
-}
-
-/**
- * Callback for when WiFiManager enters AP mode (provisioning)
- */
-void onWiFiAPStart(WiFiManager* wm) {
-  Serial.println("[WiFi] AP mode started - Captive Portal active");
-  Serial.print("[WiFi] Connect to: ");
-  Serial.println(wm->getConfigPortalSSID());
-  Serial.println("[WiFi] Open your browser at: http://192.168.4.1");
-}
-
-/**
- * Initialize WiFi with BLE Provisioning (primary) + WiFiManager fallback
+ * Initialize WiFi with BLE provisioning
  * 
  * Provisioning flow:
  * 1. Try to load WiFi credentials from NVS
  * 2. If credentials exist, connect to WiFi with multiple retry attempts
- * 3. If connection fails after retries, start BLE provisioning (keeps credentials for auto-retry)
- * 4. If no credentials, start BLE provisioning
- * 5. Wait for credentials from Web Bluetooth dashboard
+ * 3. If connection fails after retries, try compile-time fallback credentials
+ * 4. If no credentials work, start BLE provisioning
+ * 5. Wait for credentials from the Web Bluetooth dashboard
  * 
  * @return true if connected to WiFi, false if provisioning is in progress
  */
@@ -748,47 +722,6 @@ bool initWiFiProvisioning() {
   
   // BLE provisioning is non-blocking - credentials will be received in loop()
   return false;
-}
-
-/**
- * Fallback: Use WiFiManager captive portal if BLE provisioning fails
- * This provides backwards compatibility and alternative provisioning method
- * @return true if connected to WiFi, false if failed
- */
-bool initWiFiManagerFallback() {
-  Serial.println("[WiFi] Starting WiFiManager fallback...");
-  
-  // Create WiFiManager instance
-  WiFiManager wm;
-  
-  // Configure callbacks
-  wm.setAPCallback(onWiFiAPStart);
-  
-  // Configure portal (3 minute timeout, auto-reset on failure)
-  wm.setConfigPortalTimeout(180);  // 3 minutes
-  
-  // Enable specific features for better captive portal
-  wm.setWebServerCallback([]() {
-    Serial.println("[WiFi] Web server started at 192.168.4.1");
-  });
-  
-  // Auto-connect with saved credentials
-  // If no credentials, opens captive portal
-  bool connected = wm.autoConnect("ESP32-Pool-Setup", "");
-  
-  if (!connected) {
-    Serial.println("[WiFi] TIMEOUT: No credentials entered in portal");
-    // ESP32 will restart automatically after timeout
-    return false;
-  }
-  
-  // Save credentials to NVS for next boot
-  saveWiFiCredentials(WiFi.SSID().c_str(), WiFi.psk().c_str());
-  
-  // Callback manual para cuando se conecta
-  onWiFiConnect();
-  
-  return true;
 }
 
 // ==================== NTP Time Synchronization ====================
@@ -934,11 +867,23 @@ void setup() {
   digitalWrite(PUMP_RELAY_PIN, LOW);
   digitalWrite(VALVE_RELAY_PIN, LOW);
 
-  // ===== DIAGNOSTIC: Check GPIO 21 idle state (OneWire bus should be HIGH when idle) =====
+  // ===== DIAGNOSTIC: Check OneWire GPIO state (should be HIGH when idle - pull-up resistor) =====
+  Serial.print("[DIAGNOSTIC] Testing OneWire GPIO ");
+  Serial.print(TEMP_SENSOR_PIN);
+  Serial.println(" (DS18B20 bus)...");
+  
   pinMode(TEMP_SENSOR_PIN, INPUT);
-  int gpio21State = digitalRead(TEMP_SENSOR_PIN);
-  Serial.print("[DIAGNOSTIC] GPIO 21 idle state: ");
-  Serial.println(gpio21State ? "HIGH (3.3V) ✓" : "LOW (0V) ✗ BUS STUCK!");
+  delay(10);  // Allow GPIO to settle
+  int gpioIdleState = digitalRead(TEMP_SENSOR_PIN);
+  Serial.print("  → Idle state: ");
+  Serial.println(gpioIdleState ? "HIGH (3.3V) ✓" : "LOW (0V) ✗ BUS STUCK");
+  
+  if (!gpioIdleState) {
+    Serial.println("  ⚠ WARNING: OneWire bus stuck LOW - check:");
+    Serial.println("      1. 4.7kΩ pull-up resistor to 3.3V");
+    Serial.println("      2. Solder joints on GPIO 21 and data line");
+    Serial.println("      3. No short to GND on the bus");
+  }
   // ========================================================================================
 
   // Initialize DS18B20 temperature sensor
@@ -947,13 +892,32 @@ void setup() {
   int deviceCount = tempSensor.getDeviceCount();
   Serial.print("[SENSOR] DS18B20 devices found: ");
   Serial.println(deviceCount);
+  
+  if (deviceCount == 0) {
+    Serial.println("  ⚠ ERROR: No DS18B20 detected on the bus. Verify:");
+    Serial.println("      1. Sensor is soldered correctly (DQ/+5V/GND)");
+    Serial.println("      2. Pull-up resistor is installed (4.7kΩ from DQ to 3.3V)");
+    Serial.println("      3. Correct GPIO pin (GPIO 21)");
+  } else {
+    // Try to get device address and confirm communication
+    uint8_t addr[8];
+    if (tempSensor.getAddress(addr, 0)) {
+      Serial.print("  ✓ Sensor detected, address: ");
+      for (int i = 0; i < 8; i++) {
+        if (addr[i] < 0x10) Serial.print("0");
+        Serial.print(addr[i], HEX);
+        if (i < 7) Serial.print(":");
+      }
+      Serial.println();
+    }
+  }
 
   // Initial state
   pumpState = false;
   valveMode = 1;
   currentTemperature = 0.0;
 
-  // 1) Initialize WiFi with provisioning (BLE primary, WiFiManager fallback)
+  // 1) Initialize WiFi provisioning
   bool wifiConnected = initWiFiProvisioning();
   
   if (wifiConnected) {
