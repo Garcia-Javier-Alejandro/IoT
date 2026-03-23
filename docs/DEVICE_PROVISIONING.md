@@ -65,7 +65,6 @@ Primary service UUID: `4fafc201-1fb5-459e-8fcc-c5c9c331914b`
 | Password | `cba1d466-344c-4be3-ab3f-189f80dd7518` | Write | Send network password |
 | Networks | `fa87c0d0-afac-11de-8a39-0800200c9a66` | Read/Write | Trigger scan and read network list |
 | Status | `8d8218b6-97bc-4527-a8db-13094ac06b1d` | Read/Notify | Provisioning status |
-| Command | `8b9d68c4-57b8-4b02-bf19-6fd94b62f709` | Write | Commands such as `clear_wifi` |
 
 ### Status Values
 
@@ -76,7 +75,6 @@ Primary service UUID: `4fafc201-1fb5-459e-8fcc-c5c9c331914b`
 | `ssid_received` | SSID written successfully |
 | `password_received` | Password written successfully |
 | `credentials_ready` | Both credentials received; firmware is ready to connect |
-| `clear_wifi_requested` | Stored WiFi clear requested |
 
 ## Troubleshooting
 
@@ -120,9 +118,7 @@ If the saved credentials are no longer valid, the device falls back to BLE provi
 
 ## Clearing WiFi Credentials
 
-You can request a clean reprovisioning cycle by clearing stored credentials:
-- Use the dashboard action backed by the BLE `clear_wifi` command when the device is in BLE mode.
-- Or send the existing MQTT clear command while the device is online.
+Use the existing MQTT clear command while the device is online.
 
 After clearing credentials, the device returns to BLE provisioning mode on the next boot or reconnect cycle.
 

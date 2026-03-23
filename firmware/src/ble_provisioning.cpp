@@ -15,8 +15,6 @@
 #define PASSWORD_CHAR_UUID  "cba1d466-344c-4be3-ab3f-189f80dd7518"
 #define STATUS_CHAR_UUID    "8d8218b6-97bc-4527-a8db-13094ac06b1d"
 #define NETWORKS_CHAR_UUID  "fa87c0d0-afac-11de-8a39-0800200c9a66"  // WiFi networks scan result
-// Remote commands (e.g., clear WiFi). Keep in sync with dashboard JS.
-#define COMMAND_CHAR_UUID   "8b9d68c4-57b8-4b02-bf19-6fd94b62f709"
 
 // ==================== Global BLE Objects ====================
 static NimBLEServer* pServer = nullptr;
@@ -24,7 +22,6 @@ static NimBLECharacteristic* pSSIDCharacteristic = nullptr;
 static NimBLECharacteristic* pPasswordCharacteristic = nullptr;
 static NimBLECharacteristic* pStatusCharacteristic = nullptr;
 static NimBLECharacteristic* pNetworksCharacteristic = nullptr;
-static NimBLECharacteristic* pCommandCharacteristic = nullptr;
 
 // ==================== State Variables ====================
 static bool bleActive = false;
@@ -32,7 +29,6 @@ static bool newCredentialsReceived = false;
 static String receivedSSID = "";
 static String receivedPassword = "";
 static bool deviceConnected = false;
-static bool clearWiFiRequested = false;
 
 // ==================== BLE Callbacks ====================
 
@@ -116,18 +112,6 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
       // Notify client that new data is available
       pCharacteristic->notify();
     }
-    else if (uuid == COMMAND_CHAR_UUID) {
-      // Handle simple command verbs from dashboard
-      if (value == "clear_wifi") {
-        clearWiFiRequested = true;
-        Serial.println("[BLE] Clear WiFi command received via BLE");
-
-        if (pStatusCharacteristic) {
-          pStatusCharacteristic->setValue("clear_wifi_requested");
-          pStatusCharacteristic->notify();
-        }
-      }
-    }
   }
   
   void onRead(NimBLECharacteristic* pCharacteristic) {
@@ -198,16 +182,6 @@ void initBLEProvisioning() {
   );
   pNetworksCharacteristic->setCallbacks(new CharacteristicCallbacks());
   pNetworksCharacteristic->setValue("[]"); // Initial empty list
-
-  // Create Command Characteristic (Write to request actions like clearing WiFi)
-  pCommandCharacteristic = pService->createCharacteristic(
-    COMMAND_CHAR_UUID,
-    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
-  );
-  pCommandCharacteristic->setCallbacks(new CharacteristicCallbacks());
-  pCommandCharacteristic->setValue("");
-  Serial.print("[BLE] Command characteristic UUID: ");
-  Serial.println(COMMAND_CHAR_UUID);
   
   // Start the service
   pService->start();
@@ -297,6 +271,8 @@ String scanWiFiNetworks() {
     Serial.println("[BLE] No networks found or scan failed");
     Serial.print("[BLE] WiFi status code: ");
     Serial.println(WiFi.status());
+    WiFi.disconnect(true, false);
+    WiFi.mode(WIFI_OFF);
     return "[]";
   }
   
@@ -342,6 +318,8 @@ String scanWiFiNetworks() {
   
   // Clean up
   WiFi.scanDelete();
+  WiFi.disconnect(true, false);
+  WiFi.mode(WIFI_OFF);
   
   Serial.print("[BLE] JSON size: ");
   Serial.print(json.length());
@@ -350,12 +328,4 @@ String scanWiFiNetworks() {
   Serial.println(json);
   
   return json;
-}
-
-bool isClearWiFiRequested() {
-  return clearWiFiRequested;
-}
-
-void resetClearWiFiRequest() {
-  clearWiFiRequested = false;
 }

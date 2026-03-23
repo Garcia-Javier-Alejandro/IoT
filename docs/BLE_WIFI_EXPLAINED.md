@@ -132,14 +132,12 @@ Each BLE service needs a unique UUID. These are custom UUIDs for our pool contro
 #define PASSWORD_CHAR_UUID  "cba1d466-344c-4be3-ab3f-189f80dd7518"  // Password characteristic
 #define STATUS_CHAR_UUID    "8d8218b6-97bc-4527-a8db-13094ac06b1d"  // Status notifications
 #define NETWORKS_CHAR_UUID  "fa87c0d0-afac-11de-8a39-0800200c9a66"  // WiFi scan results
-#define COMMAND_CHAR_UUID   "8b9d68c4-57b8-4b02-bf19-6fd94b62f709"  // Remote commands
 ```
 
 **Why multiple characteristics?**
 - **SSID** and **Password** are separate for security (password is write-only)
 - **Status** provides real-time feedback to the dashboard
 - **Networks** allows the dashboard to request WiFi scans
-- **Command** enables remote actions like clearing credentials
 
 ---
 
@@ -152,7 +150,6 @@ static bool newCredentialsReceived = false;  // Have we received complete creden
 static String receivedSSID = "";             // SSID from dashboard
 static String receivedPassword = "";         // Password from dashboard
 static bool deviceConnected = false;         // Is a client connected?
-static bool clearWiFiRequested = false;      // Clear WiFi command received?
 ```
 
 **Thread Safety Note:** These are `static` variables scoped to this file. The ESP32 runs on a single core for Arduino code, so we don't need mutexes for these simple flags.
@@ -259,19 +256,6 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
       // Notify client that new data is available
       pCharacteristic->notify();
     }
-    
-    // ========== Remote Commands ==========
-    else if (uuid == COMMAND_CHAR_UUID) {
-      if (value == "clear_wifi") {
-        clearWiFiRequested = true;
-        Serial.println("[BLE] Clear WiFi command received via BLE");
-
-        if (pStatusCharacteristic) {
-          pStatusCharacteristic->setValue("clear_wifi_requested");
-          pStatusCharacteristic->notify();
-        }
-      }
-    }
   }
 };
 ```
@@ -281,7 +265,6 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
 2. Dashboard writes password → ESP32 stores it and notifies "password_received"
 3. **Both received?** → Set `newCredentialsReceived = true` (main loop will check this)
 4. Dashboard can request WiFi scan → ESP32 scans and returns JSON array
-5. Dashboard can send commands like "clear_wifi" → ESP32 processes them
 
 ---
 
@@ -347,14 +330,6 @@ void initBLEProvisioning() {
   );
   pNetworksCharacteristic->setCallbacks(new CharacteristicCallbacks());
   pNetworksCharacteristic->setValue("[]");  // Empty array initially
-  
-  // ========== Create Command Characteristic ==========
-  pCommandCharacteristic = pService->createCharacteristic(
-    COMMAND_CHAR_UUID,
-    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
-  );
-  pCommandCharacteristic->setCallbacks(new CharacteristicCallbacks());
-  pCommandCharacteristic->setValue("");
   
   // ========== Start the Service ==========
   pService->start();

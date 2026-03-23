@@ -15,7 +15,6 @@ const ESP32BLEProvisioning = {
   PASSWORD_CHAR_UUID: 'cba1d466-344c-4be3-ab3f-189f80dd7518',
   STATUS_CHAR_UUID: '8d8218b6-97bc-4527-a8db-13094ac06b1d',
   NETWORKS_CHAR_UUID: 'fa87c0d0-afac-11de-8a39-0800200c9a66',
-  COMMAND_CHAR_UUID: '8b9d68c4-57b8-4b02-bf19-6fd94b62f709',
 
   // State
   device: null,
@@ -25,7 +24,6 @@ const ESP32BLEProvisioning = {
   passwordCharacteristic: null,
   statusCharacteristic: null,
   networksCharacteristic: null,
-  commandCharacteristic: null,
 
   /**
    * Check if Web Bluetooth is supported
@@ -76,15 +74,6 @@ const ESP32BLEProvisioning = {
       this.passwordCharacteristic = await this.service.getCharacteristic(this.PASSWORD_CHAR_UUID);
       this.networksCharacteristic = await this.service.getCharacteristic(this.NETWORKS_CHAR_UUID);
       this.statusCharacteristic = await this.service.getCharacteristic(this.STATUS_CHAR_UUID);
-      
-      // Command characteristic is optional (for backwards compatibility with old firmware)
-      try {
-        this.commandCharacteristic = await this.service.getCharacteristic(this.COMMAND_CHAR_UUID);
-        console.log('[BLE] ✓ Got command characteristic (clear WiFi supported)');
-      } catch (e) {
-        console.warn('[BLE] Command characteristic not available (old firmware or cached GATT)');
-        this.commandCharacteristic = null;
-      }
       
       console.log('[BLE] ✓ Got all characteristics');
 
@@ -209,31 +198,6 @@ const ESP32BLEProvisioning = {
     this.ssidCharacteristic = null;
     this.passwordCharacteristic = null;
     this.statusCharacteristic = null;
-    this.commandCharacteristic = null;
-  },
-
-  /**
-   * Ask the ESP32 to clear stored WiFi credentials via BLE command characteristic
-   */
-  async clearWiFiCredentials() {
-    if (!this.isSupported()) {
-      throw new Error('Web Bluetooth no está disponible en este navegador');
-    }
-
-    // Ensure we are connected and have the command characteristic
-    if (!this.server || !this.server.connected) {
-      await this.connect();
-    }
-    
-    if (!this.commandCharacteristic) {
-      throw new Error('Comando no soportado. Actualiza el firmware del ESP32 o borra el dispositivo desde Configuración de Windows → Bluetooth para refrescar la caché.');
-    }
-
-    const encoder = new TextEncoder();
-    await this.commandCharacteristic.writeValue(encoder.encode('clear_wifi'));
-
-    // Small pause to let the device process and send ack (best-effort)
-    await new Promise(resolve => setTimeout(resolve, 300));
   },
 
     /**

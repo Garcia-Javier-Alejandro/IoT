@@ -54,6 +54,7 @@ PubSubClient mqtt(tlsClient);
 
 // ==================== Forward Declarations ====================
 void clearWiFiCredentials();
+void startBLEProvisioningMode(const char* reason);
 
 // ==================== Helper Functions ====================
 
@@ -588,6 +589,15 @@ void clearWiFiCredentials() {
   Serial.println("[NVS] WiFi credentials cleared");
 }
 
+void startBLEProvisioningMode(const char* reason) {
+  Serial.println(reason);
+  Serial.println("[WiFi] Disabling WiFi radio for BLE provisioning...");
+  WiFi.disconnect(true, false);
+  WiFi.mode(WIFI_OFF);
+  delay(100);
+  initBLEProvisioning();
+}
+
 /**
  * Connect to WiFi using stored credentials with retry logic
  * @param ssid WiFi SSID
@@ -717,8 +727,7 @@ bool initWiFiProvisioning() {
   }
   
   // Step 4: No credentials or connection failed - start BLE provisioning
-  Serial.println("[WiFi] Starting BLE provisioning (credentials preserved for retry)...");
-  initBLEProvisioning();
+  startBLEProvisioningMode("[WiFi] Starting BLE provisioning (credentials preserved for retry)...");
   
   // BLE provisioning is non-blocking - credentials will be received in loop()
   return false;
@@ -990,9 +999,8 @@ void loop() {
             Serial.println("========================================");
           } else {
             // Connection failed - restart BLE for retry
-            Serial.println("[WiFi] BLE credentials failed - restarting BLE for retry...");
             clearBLECredentials();
-            initBLEProvisioning();
+            startBLEProvisioningMode("[WiFi] BLE credentials failed - restarting BLE for retry...");
           }
         }
       }
@@ -1030,8 +1038,7 @@ void loop() {
     } else {
       // No credentials - restart BLE provisioning (only if not already active)
       if (!isBLEProvisioningActive()) {
-        Serial.println("[WiFi] No credentials - starting BLE provisioning...");
-        initBLEProvisioning();
+        startBLEProvisioningMode("[WiFi] No credentials - starting BLE provisioning...");
         reconnectAttempts = 0;
       }
     }

@@ -70,15 +70,4 @@ String scanWiFiNetworks();
  */
 void clearBLECredentials();
 
-/**
- * Check if a clear WiFi command was received via BLE
- * @return true if the dashboard requested clearing WiFi credentials
- */
-bool isClearWiFiRequested();
-
-/**
- * Reset the clear WiFi request flag after handling it
- */
-void resetClearWiFiRequest();
-
 #endif // BLE_PROVISIONING_H
